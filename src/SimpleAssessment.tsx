@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
-// Define the Eiken question/request types
-const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3']
+const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3', '4', '5']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
 
 const API_URL = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam'
 const QUESTIONS_API = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/show_questions'
 
-function App() {
+function SimpleAssessment() {
   const [form, setForm] = useState({
     grade: '',
     min_words: '',
@@ -25,10 +24,13 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<any>(null)
-  const [additionalInstructions, setAdditionalInstructions] = useState<string[]>([])
-  const [newInstruction, setNewInstruction] = useState('')
   const [questions, setQuestions] = useState<{[id: string]: any}>({})
   const [fetchingQuestions, setFetchingQuestions] = useState(false)
+
+  // Filter question types based on grade
+  const filteredQuestionTypes = form.grade === '1' || form.grade === 'Pre-1'
+    ? QUESTION_TYPES.filter(qt => qt !== 'Email')
+    : QUESTION_TYPES
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -65,16 +67,6 @@ function App() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleAddInstruction = () => {
-    if (newInstruction.trim()) {
-      setAdditionalInstructions([...additionalInstructions, newInstruction.trim()])
-      setNewInstruction('')
-    }
-  }
-  const handleRemoveInstruction = (idx: number) => {
-    setAdditionalInstructions(additionalInstructions.filter((_, i) => i !== idx))
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -82,7 +74,6 @@ function App() {
     setResult(null)
     const payload = {
       eiken_data: {
-        additional_instructions: additionalInstructions.length > 0 ? additionalInstructions : undefined,
         grade: form.grade,
         min_words: Number(form.min_words),
         max_words: Number(form.max_words),
@@ -108,15 +99,11 @@ function App() {
       })
       if (!res.ok) {
         let errorText = await res.text();
-        console.error('Request payload:', payload);
-        console.error('Response status:', res.status);
-        console.error('Response text:', errorText);
         throw new Error(`Failed to get assessment (status: ${res.status})\n${errorText}`)
       }
       const data = await res.json()
       setResult(data)
     } catch (err: any) {
-      console.error(err);
       setError(err.message + (err.cause ? `\nCause: ${err.cause}` : ''))
     } finally {
       setLoading(false)
@@ -125,8 +112,8 @@ function App() {
 
   return (
     <main id="root">
-      <h1>Eiken Assessment Submission</h1>
-      <form className="eiken-form" onSubmit={handleSubmit} aria-label="Eiken assessment form">
+      <h1>Simple Eiken Assessment</h1>
+      <form className="eiken-form" onSubmit={handleSubmit} aria-label="Simple Eiken assessment form">
         <div className="form-row">
           <label>
             Grade
@@ -139,7 +126,7 @@ function App() {
             Question Type
             <select name="question_type" value={form.question_type} onChange={handleChange} required>
               <option value="">Select type</option>
-              {QUESTION_TYPES.map(qt => <option key={qt} value={qt}>{qt}</option>)}
+              {filteredQuestionTypes.map(qt => <option key={qt} value={qt}>{qt}</option>)}
             </select>
           </label>
         </div>
@@ -194,26 +181,6 @@ function App() {
           Student Answer
           <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={5} />
         </label>
-        <label>
-          Additional Instructions (optional)
-          <div style={{display:'flex', gap:'0.5em', alignItems:'center', marginBottom:'0.5em'}}>
-            <input
-              type="text"
-              value={newInstruction}
-              onChange={e => setNewInstruction(e.target.value)}
-              placeholder="Add instruction"
-            />
-            <button type="button" onClick={handleAddInstruction} disabled={!newInstruction.trim()}>Add</button>
-          </div>
-          <ul style={{margin:0, paddingLeft:'1.2em'}}>
-            {additionalInstructions.map((inst, idx) => (
-              <li key={idx} style={{display:'flex', alignItems:'center', gap:'0.5em'}}>
-                <span>{inst}</span>
-                <button type="button" aria-label="Remove instruction" onClick={() => handleRemoveInstruction(idx)} style={{fontSize:'0.9em', color:'#b00020', background:'none', border:'none', cursor:'pointer'}}>✕</button>
-              </li>
-            ))}
-          </ul>
-        </label>
         <button type="submit" disabled={loading}>{loading ? 'Submitting...' : 'Submit'}</button>
       </form>
       {error && <div className="error" role="alert">{error}</div>}
@@ -256,4 +223,4 @@ function App() {
   )
 }
 
-export default App
+export default SimpleAssessment
