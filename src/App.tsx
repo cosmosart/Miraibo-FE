@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 
 // Define the Eiken question/request types
-const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2', '3', '4', '5']
+const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3', '4', '5']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
 
 const API_URL = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam' // <-- Updated API endpoint
