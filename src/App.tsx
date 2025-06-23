@@ -5,7 +5,7 @@ import './App.css'
 const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2', '3', '4', '5']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
 
-const API_URL = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam' // <-- Updated API endpoint
+const API_URL = 'http://localhost:8000/v1/eiken_exam' // <-- Updated API endpoint
 
 function App() {
   const [form, setForm] = useState({
@@ -96,13 +96,6 @@ function App() {
   return (
     <main id="root">
       <h1>Eiken Assessment Submission</h1>
-      {showPayload && lastPayload && (
-        <section className="result" aria-live="polite" style={{marginBottom: '1.5em'}}>
-          <h2>Request JSON Payload</h2>
-          <pre style={{background:'#222',color:'#fff',padding:'1em',borderRadius:'8px',overflowX:'auto'}}>{lastPayload}</pre>
-          <button type="button" onClick={() => setShowPayload(false)} style={{marginTop:'0.5em'}}>Hide Payload</button>
-        </section>
-      )}
       <form className="eiken-form" onSubmit={handleSubmit} aria-label="Eiken assessment form">
         <div className="form-row">
           <label>
@@ -219,9 +212,3 @@ function App() {
 }
 
 export default App
-
-
-
-
-
-curl -X 'POST' 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{ "eiken_data": { "additional_instructions": [ "string" ], "grade": "1", "max_words": 190, "min_words": 240, "question": "Will governments be able to keep up with increasing energy demands in the future?", "question_type": "Composition", "underlined": "string" }, "uuid": "string", "student_name": "Eli", "student_grade": "general", "teacher_id": "eli", "student_answer": "No I not agree with that. Because Natural gas price will be increase really high." }'
