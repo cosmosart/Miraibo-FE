@@ -5,7 +5,7 @@ import './App.css'
 const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2', '3', '4', '5']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
 
-const API_URL = 'http://localhost:8000/v1/eiken_exam' // <-- Updated API endpoint
+const API_URL = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam' // <-- Updated API endpoint
 
 function App() {
   const [form, setForm] = useState({
