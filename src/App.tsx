@@ -25,8 +25,6 @@ function App() {
   const [result, setResult] = useState<any>(null)
   const [additionalInstructions, setAdditionalInstructions] = useState<string[]>([])
   const [newInstruction, setNewInstruction] = useState('')
-  const [showPayload, setShowPayload] = useState(false)
-  const [lastPayload, setLastPayload] = useState<string | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -63,9 +61,6 @@ function App() {
       teacher_id: form.teacher_id,
       student_answer: form.student_answer,
     }
-    const payloadStr = JSON.stringify(payload, null, 2)
-    setLastPayload(payloadStr)
-    setShowPayload(true)
     try {
       // Try to log the payload and response for debugging
       const res = await fetch(API_URL, {
