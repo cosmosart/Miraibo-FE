@@ -3,10 +3,12 @@
 This project is a Vite + React + TypeScript frontend for the Eiken assessment system. It allows users to input Eiken question data, submit it to a FastAPI backend, and view assessment results.
 
 ## Features
-- Input forms for Eiken question and answer data
+- Input forms for Eiken question and answer data (English and Japanese UI)
 - API integration with FastAPI backend
 - Responsive, modern UI
 - Ready for deployment to GitHub Pages
+- Centralized API endpoint configuration (`src/apiConfig.ts`)
+- Multiple assessment pages: English, Japanese, and Custom
 
 ## Getting Started
 
@@ -28,8 +30,16 @@ npm run build
 ### Deploy to GitHub Pages
 - Build the project and push the contents of the `dist` folder to your `gh-pages` branch.
 
+## API Configuration
+- All API endpoints are managed in `src/apiConfig.ts`. Update this file to change backend URLs for all pages at once.
+
+## Pages
+- **Assessment (EN):** English Eiken assessment form and results
+- **英検アセスメント:** Japanese Eiken assessment form and results
+- **Custom Assessment:** Full-featured form for custom Eiken data
+
 ## API
-- The frontend communicates with a FastAPI backend. Update the API endpoint in the code as needed for your deployment.
+- The frontend communicates with a FastAPI backend. Update the API endpoint in `src/apiConfig.ts` as needed for your deployment.
 
 ---
 

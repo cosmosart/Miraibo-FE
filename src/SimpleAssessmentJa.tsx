@@ -2,26 +2,29 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { API_URL, QUESTIONS_API } from './apiConfig';
 
-const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3', '4', '5']
-const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
+const EIKEN_GRADES = [
+  '1級', '準1級', '2級', '準2級プラス', '準2級', '3級'
+]
+const EIKEN_GRADES_API_MAP: { [key: string]: string } = {
+  '1級': '1',
+  '準1級': 'Pre-1',
+  '2級': '2',
+  '準2級プラス': 'Pre-2-Plus',
+  '準2級': 'Pre-2',
+  '3級': '3',
+}
+const QUESTION_TYPES = ['作文', '要約', 'Eメール']
 const STUDENT_GRADES = [
-  'General',
-  'Pre-Elementary',
-  'Lower Elementary',
-  'Upper Elementary',
-  'Middle School',
-  'High School',
-  'University',
-  'Post graduation',
+  '一般',
+  '小学校低学年',
+  '小学校高学年',
+  '中学生',
+  '高校生',
+  '大学生',
+  '大学院生',
 ]
 
-//const API_URL = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam'
-//const QUESTIONS_API = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/show_questions'
-
-// const API_URL = 'http://localhost:8000/v1/eiken_exam'
-// const QUESTIONS_API = 'http://localhost:8000/v1/get_random_question'
-
-function SimpleAssessment() {
+function SimpleAssessmentJa() {
   const [form, setForm] = useState({
     grade: '',
     min_words: '',
@@ -30,7 +33,7 @@ function SimpleAssessment() {
     question_type: '',
     underlined: '',
     student_name: '',
-    student_grade: 'General', // Set default value here
+    student_grade: '一般',
     teacher_id: '',
     student_answer: '',
     question_id: '',
@@ -41,9 +44,17 @@ function SimpleAssessment() {
   const [questionObj, setQuestionObj] = useState<any>(null)
   const [fetchingQuestions, setFetchingQuestions] = useState(false)
 
-  // Filter question types based on grade
-  const filteredQuestionTypes = form.grade === '1' || form.grade === 'Pre-1'
-    ? QUESTION_TYPES.filter(qt => qt !== 'Email')
+  // 日本語のタイプ名をAPI用に変換
+  const apiQuestionType = (type: string) => {
+    if (type === '作文') return 'composition';
+    if (type === '要約') return 'summary';
+    if (type === 'Eメール') return 'email';
+    return type.toLowerCase();
+  }
+
+  // グレードによるタイプフィルタ
+  const filteredQuestionTypes = (form.grade === '1級' || form.grade === '準1級')
+    ? QUESTION_TYPES.filter(qt => qt !== 'Eメール')
     : QUESTION_TYPES
 
   useEffect(() => {
@@ -56,14 +67,13 @@ function SimpleAssessment() {
       setError(null)
       try {
         const params = new URLSearchParams({
-          grade: form.grade,
-          question_type: form.question_type.toLowerCase(),
+          grade: EIKEN_GRADES_API_MAP[form.grade] || form.grade,
+          question_type: apiQuestionType(form.question_type),
         })
         const res = await fetch(`${QUESTIONS_API}?${params.toString()}`)
-        if (!res.ok) throw new Error('Failed to fetch question')
+        if (!res.ok) throw new Error('問題の取得に失敗しました')
         const data = await res.json()
         if (data && typeof data === 'object') {
-          // Use the first key in the returned object
           const keys = Object.keys(data)
           if (keys.length > 0) {
             const firstKey = keys[0]
@@ -83,7 +93,7 @@ function SimpleAssessment() {
           setQuestionObj(null)
         }
       } catch (err: any) {
-        setError('Could not fetch question: ' + err.message)
+        setError('問題の取得に失敗しました: ' + err.message)
         setQuestionObj(null)
       } finally {
         setFetchingQuestions(false)
@@ -93,7 +103,6 @@ function SimpleAssessment() {
   }, [form.grade, form.question_type])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    // If changing grade or question_type, reset question_id and min/max words
     if (e.target.name === 'grade' || e.target.name === 'question_type') {
       setForm({
         ...form,
@@ -107,7 +116,6 @@ function SimpleAssessment() {
     }
   }
 
-  // If user does not select a question_id, pick one at random before submit
   const getSelectedQuestionId = () => {
     if (form.question_id) return form.question_id;
     return '';
@@ -118,19 +126,18 @@ function SimpleAssessment() {
     setLoading(true)
     setError(null)
     setResult(null)
-    // Use selected or random question
     const selectedQuestionId = getSelectedQuestionId();
     const selectedQuestion = selectedQuestionId && questionObj ? questionObj.question : form.question;
     const minWords = selectedQuestionId && questionObj ? questionObj.min_words : form.min_words;
     const maxWords = selectedQuestionId && questionObj ? questionObj.max_words : form.max_words;
     const payload = {
       eiken_data: {
-        additional_instructions: undefined, // No additional instructions in simple mode
+        additional_instructions: undefined,
         grade: form.grade,
         min_words: Number(minWords),
         max_words: Number(maxWords),
         question: selectedQuestion,
-        question_type: form.question_type.toLowerCase(),
+        question_type: apiQuestionType(form.question_type),
         underlined: form.underlined || '',
       },
       question_id: selectedQuestionId || '',
@@ -151,12 +158,12 @@ function SimpleAssessment() {
       })
       if (!res.ok) {
         let errorText = await res.text();
-        throw new Error(`Failed to get assessment (status: ${res.status})\n${errorText}`)
+        throw new Error(`採点に失敗しました (status: ${res.status})\n${errorText}`)
       }
       const data = await res.json()
       setResult(data)
     } catch (err: any) {
-      setError(err.message + (err.cause ? `\nCause: ${err.cause}` : ''))
+      setError(err.message + (err.cause ? `\n原因: ${err.cause}` : ''))
     } finally {
       setLoading(false)
     }
@@ -164,50 +171,50 @@ function SimpleAssessment() {
 
   return (
     <main id="root">
-      <h1>Eiken Assessment</h1>
-      <form className="eiken-form" onSubmit={handleSubmit} aria-label="Simple Eiken assessment form">
+      <h1>英検アセスメント</h1>
+      <form className="eiken-form" onSubmit={handleSubmit} aria-label="英検アセスメントフォーム">
         <div className="form-row">
           <label>
-            Grade
+            グレード
             <select name="grade" value={form.grade} onChange={handleChange} required>
-              <option value="">Select grade</option>
+              <option value="">グレードを選択</option>
               {EIKEN_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </label>
           <label>
-            Question Type
+            問題タイプ
             <select name="question_type" value={form.question_type} onChange={handleChange} required>
-              <option value="">Select type</option>
+              <option value="">タイプを選択</option>
               {filteredQuestionTypes.map(qt => <option key={qt} value={qt}>{qt}</option>)}
             </select>
           </label>
         </div>
         {fetchingQuestions ? (
-          <div>Loading questions...</div>
+          <div>問題を取得中...</div>
         ) : form.grade && form.question_type && !questionObj ? (
-          <div style={{marginTop: '1em', color: '#b00'}}>No question available for this grade and type.</div>
+          <div style={{marginTop: '1em', color: '#b00'}}>このグレードとタイプの問題がありません。</div>
         ) : questionObj ? (
           <>
             <div style={{marginTop: '1em', padding: '1em', color: '#222', textAlign: 'left'}}>
-              <b>Question ID:</b> {form.question_id}
+              <b>問題ID:</b> {form.question_id}
             </div>
             <div style={{marginTop: '1em', background: '#f6f8fa', padding: '1em', borderRadius: 8, color: '#222', textAlign: 'left'}}>
-              <b>Selected Question:</b>
+              <b>出題内容:</b>
               <div style={{marginTop: '0.5em'}}>
-                {form.question_type === 'Composition' ? (
+                {form.question_type === '作文' ? (
                   <>
-                    <div>● Write an essay on the given TOPIC.</div>
-                    <div>● Give THREE reasons to support your answer.</div>
-                    <div>● Structure: introduction, main body, and conclusion</div>
-                    <div>● Suggested length: {form.min_words}-{form.max_words} words</div>
-                    <div style={{marginTop: '0.7em'}}>Any writing outside the space will not be graded.</div>
-                    <div style={{marginTop: '1em', fontWeight: 600}}>TOPIC</div>
+                    <div>● 指定されたトピックについてエッセイを書いてください。</div>
+                    <div>● あなたの答えをサポートする理由を3つ挙げてください。</div>
+                    <div>● 構成: 導入・本文・結論</div>
+                    <div>● 目安: {form.min_words}-{form.max_words}語</div>
+                    <div style={{marginTop: '0.7em'}}>枠外の記述は採点されません。</div>
+                    <div style={{marginTop: '1em', fontWeight: 600}}>トピック</div>
                     <div style={{marginTop: '0.5em'}}>{form.question}</div>
                   </>
-                ) : form.question_type === 'Summary' ? (
+                ) : form.question_type === '要約' ? (
                   <>
-                    <div>Read the article below and summarize it in your own words as far as possible in English.</div>
-                    <div>● Summarize it between {form.min_words} and {form.max_words} words.</div>
+                    <div>下記の文章を読み、できるだけ自分の言葉で要約してください。</div>
+                    <div>● {form.min_words}～{form.max_words}語でまとめてください。</div>
                     <div style={{marginTop: '1em', fontWeight: 600}}>{form.question}</div>
                   </>
                 ) : (
@@ -217,27 +224,14 @@ function SimpleAssessment() {
             </div>
           </>
         ) : null}
-        {/* Only show these fields for input on Simple page */}
-        {/*
         <div className="form-row">
           <label>
-            Min Words
-            <input name="min_words" type="number" min={1} value={form.min_words} readOnly style={{background:'#eee'}} />
-          </label>
-          <label>
-            Max Words
-            <input name="max_words" type="number" min={1} value={form.max_words} readOnly style={{background:'#eee'}} />
-          </label>
-        </div>
-        */}
-        <div className="form-row">
-          <label>
-            Student Name
+            生徒氏名
             <input name="student_name" value={form.student_name} onChange={handleChange} required />
           </label>
           <label>
-            Student Grade
-            <select name="student_grade" value={form.student_grade || 'General'} onChange={handleChange} required>
+            生徒学年
+            <select name="student_grade" value={form.student_grade} onChange={handleChange} required>
               {STUDENT_GRADES.map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
@@ -245,43 +239,42 @@ function SimpleAssessment() {
           </label>
         </div>
         <label>
-          Teacher ID
+          教員ID
           <input name="teacher_id" value={form.teacher_id} onChange={handleChange} required />
         </label>
         <label>
-          Student Answer
+          生徒解答
           <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={5} />
         </label>
-        {/* Hide all other fields on Simple page */}
-        <button type="submit" disabled={loading}>{loading ? 'Submitting...' : 'Submit'}</button>
+        <button type="submit" disabled={loading}>{loading ? '送信中...' : '送信'}</button>
       </form>
       {error && <div className="error" role="alert">{error}</div>}
       {result && (
         <section className="result" aria-live="polite">
-          <h2>Assessment Result</h2>
+          <h2>アセスメント結果</h2>
           <div style={{textAlign:'left'}}>
-            <p><b>Student:</b> {result.student_name} ({result.student_grade})</p>
-            <p><b>Teacher ID:</b> {result.teacher_id}</p>
-            <p><b>Exam Type:</b> {result.exam_type} ({result.exam_grade})</p>
-            <p><b>Assignment ID:</b><br/> {result.result_id}</p>
+            <p><b>生徒:</b> {result.student_name} ({result.student_grade})</p>
+            <p><b>教員ID:</b> {result.teacher_id}</p>
+            <p><b>試験タイプ:</b> {result.exam_type} ({result.exam_grade})</p>
+            <p><b>課題ID:</b><br/> {result.result_id}</p>
             <hr />
             {result.the_result && typeof result.the_result === 'object' ? (
               <>
-                <p><b>Overall Feedback:</b> {result.the_result.overall_feedback}</p>
-                <p><b>Strengths:</b> <ul>{result.the_result.strengths?.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
-                <p><b>Weaknesses:</b> <ul>{result.the_result.weaknesses?.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul></p>
-                <p><b>Improvement Suggestions:</b> <ul>{result.the_result.improvement_suggestions?.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
-                {result.the_result.example_answers && <p><b>Example Answers:</b> {result.the_result.example_answers}</p>}
-                <p><b>Improvement Plan:</b> {result.the_result.improvement_plan}</p>
-                <p><b>Scores:</b></p>
+                <p><b>総合フィードバック:</b> {result.the_result.overall_feedback}</p>
+                <p><b>良い点:</b> <ul>{result.the_result.strengths?.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
+                <p><b>改善点:</b> <ul>{result.the_result.weaknesses?.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul></p>
+                <p><b>改善提案:</b> <ul>{result.the_result.improvement_suggestions?.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
+                {result.the_result.example_answers && <p><b>模範解答:</b> {result.the_result.example_answers}</p>}
+                <p><b>改善プラン:</b> {result.the_result.improvement_plan}</p>
+                <p><b>スコア:</b></p>
                 <ul>
-                  <li>Reasons: {result.the_result.reasons_score}</li>
-                  <li>Structure: {result.the_result.structure_score}</li>
-                  <li>Length: {result.the_result.length_score}</li>
-                  <li>Content: {result.the_result.content_score}</li>
-                  <li>Cohesion: {result.the_result.cohesion_score}</li>
-                  <li>Vocabulary: {result.the_result.vocabulary_score}</li>
-                  <li>Grammar: {result.the_result.grammar_score}</li>
+                  <li>理由: {result.the_result.reasons_score}</li>
+                  <li>構成: {result.the_result.structure_score}</li>
+                  <li>語数: {result.the_result.length_score}</li>
+                  <li>内容: {result.the_result.content_score}</li>
+                  <li>一貫性: {result.the_result.cohesion_score}</li>
+                  <li>語彙: {result.the_result.vocabulary_score}</li>
+                  <li>文法: {result.the_result.grammar_score}</li>
                 </ul>
               </>
             ) : (
@@ -294,4 +287,4 @@ function SimpleAssessment() {
   )
 }
 
-export default SimpleAssessment
+export default SimpleAssessmentJa

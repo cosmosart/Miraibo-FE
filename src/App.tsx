@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import { API_URL, QUESTIONS_API } from './apiConfig';
 
 // Define the Eiken question/request types
 const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
-
-// const API_URL = 'https:/localhost:8000/v1/eiken_exam'
-// const QUESTIONS_API = 'https://127.0.0.1:8000/v1/show_questions'
-const API_URL = 'http://localhost:8000/v1/eiken_exam';
-const QUESTIONS_API = 'http://localhost:8000/v1/show_questions';
 
 function App() {
   const [form, setForm] = useState({
@@ -145,7 +141,7 @@ function App() {
 
   return (
     <main id="root">
-      <h1>Eiken Assessment Submission</h1>
+      <h1>Eiken Assessment</h1>
       <form className="eiken-form" onSubmit={handleSubmit} aria-label="Eiken assessment form">
         <div className="form-row">
           <label>
