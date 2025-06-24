@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { API_URL, QUESTIONS_API } from './apiConfig';
 
+function getTeacherIdFromUrl() {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('teacher_id') || '';
+  }
+  return '';
+}
+
 const EIKEN_GRADES = [
   '1級', '準1級', '2級', '準2級プラス', '準2級', '3級'
 ]
@@ -34,7 +42,7 @@ function SimpleAssessmentJa() {
     underlined: '',
     student_name: '',
     student_grade: '一般',
-    teacher_id: '',
+    teacher_id: getTeacherIdFromUrl(),
     student_answer: '',
     question_id: '',
   })
@@ -169,9 +177,23 @@ function SimpleAssessmentJa() {
     }
   }
 
+  if (!form.teacher_id) {
+    return (
+      <main id="root">
+        <h1>英検アセスメント</h1>
+        <div style={{marginBottom: '1em', fontWeight: 500, color: '#b00'}}>
+          教員IDを入れてください。
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main id="root">
       <h1>英検アセスメント</h1>
+      <div style={{marginBottom: '1em', fontWeight: 500, color: '#333'}}>
+        教員ID: <span style={{fontFamily: 'monospace'}}>{form.teacher_id}</span>
+      </div>
       <form className="eiken-form" onSubmit={handleSubmit} aria-label="英検アセスメントフォーム">
         <div className="form-row">
           <label>
@@ -238,10 +260,6 @@ function SimpleAssessmentJa() {
             </select>
           </label>
         </div>
-        <label>
-          教員ID
-          <input name="teacher_id" value={form.teacher_id} onChange={handleChange} required />
-        </label>
         <label>
           生徒解答
           <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={5} />

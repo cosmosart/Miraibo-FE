@@ -21,6 +21,14 @@ const STUDENT_GRADES = [
 // const API_URL = 'http://localhost:8000/v1/eiken_exam'
 // const QUESTIONS_API = 'http://localhost:8000/v1/get_random_question'
 
+function getTeacherIdFromUrl() {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('teacher_id') || '';
+  }
+  return '';
+}
+
 function SimpleAssessment() {
   const [form, setForm] = useState({
     grade: '',
@@ -30,8 +38,8 @@ function SimpleAssessment() {
     question_type: '',
     underlined: '',
     student_name: '',
-    student_grade: 'General', // Set default value here
-    teacher_id: '',
+    student_grade: 'General',
+    teacher_id: getTeacherIdFromUrl(),
     student_answer: '',
     question_id: '',
   })
@@ -162,9 +170,25 @@ function SimpleAssessment() {
     }
   }
 
+  if (!form.teacher_id) {
+    return (
+      <main id="root">
+        <h1>Eiken Assessment</h1>
+        <div style={{marginBottom: '1em', fontWeight: 500, color: '#b00'}}>
+          Please provide a teacher ID.
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main id="root">
       <h1>Eiken Assessment</h1>
+      {form.teacher_id && (
+        <div style={{marginBottom: '1em', fontWeight: 500, color: '#333'}}>
+          Teacher ID: <span style={{fontFamily: 'monospace'}}>{form.teacher_id}</span>
+        </div>
+      )}
       <form className="eiken-form" onSubmit={handleSubmit} aria-label="Simple Eiken assessment form">
         <div className="form-row">
           <label>
@@ -244,10 +268,10 @@ function SimpleAssessment() {
             </select>
           </label>
         </div>
-        <label>
+        {/* <label>
           Teacher ID
           <input name="teacher_id" value={form.teacher_id} onChange={handleChange} required />
-        </label>
+        </label> */}
         <label>
           Student Answer
           <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={5} />
