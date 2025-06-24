@@ -5,8 +5,10 @@ import './App.css'
 const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
 
-const API_URL = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/eiken_exam'
-const QUESTIONS_API = 'https://miraibo-api-7n5a4c6z6a-an.a.run.app/v1/show_questions'
+// const API_URL = 'https:/localhost:8000/v1/eiken_exam'
+// const QUESTIONS_API = 'https://127.0.0.1:8000/v1/show_questions'
+const API_URL = 'http://localhost:8000/v1/eiken_exam';
+const QUESTIONS_API = 'http://localhost:8000/v1/show_questions';
 
 function App() {
   const [form, setForm] = useState({
@@ -60,6 +62,24 @@ function App() {
     }
     fetchQuestions()
   }, [form.grade, form.question_type])
+
+  // When a question is selected, auto-fill min_words, max_words, and question, and make them read-only
+  useEffect(() => {
+    if (form.question_id && questions[form.question_id]) {
+      const q = questions[form.question_id];
+      setForm(prev => ({
+        ...prev,
+        min_words: q.min_words ? String(q.min_words) : '',
+        max_words: q.max_words ? String(q.max_words) : '',
+        question: q.question || '',
+      }));
+    }
+    // Only clear if question_id is cleared
+    if (!form.question_id) {
+      setForm(prev => ({ ...prev, min_words: '', max_words: '', question: '' }));
+    }
+    // eslint-disable-next-line
+  }, [form.question_id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -146,31 +166,40 @@ function App() {
         {fetchingQuestions ? (
           <div>Loading questions...</div>
         ) : Object.keys(questions).length > 0 ? (
-          <label>
-            Question ID
-            <select name="question_id" value={form.question_id} onChange={handleChange} required>
-              <option value="">Select question ID</option>
-              {Object.entries(questions).map(([qid, qobj]: [string, any]) => (
-                <option key={qid} value={qid}>
-                  {qid} - {qobj.question.replace(/\s+/g, ' ').trim().slice(0, 60)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label>
+              Question ID
+              <select name="question_id" value={form.question_id} onChange={handleChange} required>
+                <option value="">Select question ID</option>
+                {Object.entries(questions).map(([qid, qobj]: [string, any]) => (
+                  <option key={qid} value={qid}>
+                    {qid} - {qobj.question.replace(/\s+/g, ' ').trim().slice(0, 60)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* Show the question text for the selected ID */}
+            {form.question_id && questions[form.question_id] && (
+              <div style={{marginTop: '1em', background: '#f6f8fa', padding: '1em', borderRadius: 8, color: '#222', textAlign: 'left'}}>
+                <b>Selected Question:</b>
+                <div style={{marginTop: '0.5em'}}>{questions[form.question_id].question}</div>
+              </div>
+            )}
+          </>
         ) : null}
         <div className="form-row">
           <label>
             Min Words
-            <input name="min_words" type="number" min={1} value={form.min_words} onChange={handleChange} required />
+            <input name="min_words" type="number" min={1} value={form.min_words} onChange={handleChange} required readOnly={!!form.question_id} style={form.question_id ? {background:'#eee'} : {}} />
           </label>
           <label>
             Max Words
-            <input name="max_words" type="number" min={1} value={form.max_words} onChange={handleChange} required />
+            <input name="max_words" type="number" min={1} value={form.max_words} onChange={handleChange} required readOnly={!!form.question_id} style={form.question_id ? {background:'#eee'} : {}} />
           </label>
         </div>
         <label>
           Question
-          <textarea name="question" value={form.question} onChange={handleChange} required rows={3} />
+          <textarea name="question" value={form.question} onChange={handleChange} required rows={3} readOnly={!!form.question_id} style={form.question_id ? {background:'#eee'} : {}} />
         </label>
         <label>
           Underlined (optional)
@@ -249,6 +278,12 @@ function App() {
             ) : (
               <pre>{JSON.stringify(result.the_result, null, 2)}</pre>
             )}
+            {/* Always print the full raw result for debugging */}
+            <hr />
+            <details open>
+              <summary>Raw API Response</summary>
+              <pre>{JSON.stringify(result, null, 2)}</pre>
+            </details>
           </div>
         </section>
       )}
