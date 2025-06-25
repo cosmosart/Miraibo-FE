@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import App from './App';
-import SimpleAssessment from './SimpleAssessment';
-import SimpleAssessmentJa from './SimpleAssessmentJa';
+import AssessmentEn from './assessmentEn';
+import AssessmentJa from './assessmentJa';
 import './App.css';
 
 function MainRouter() {
@@ -39,7 +39,7 @@ function MainRouter() {
         </ul>
       </nav>
       <div style={{ padding: '2em 1em', background: '#fafcff', minHeight: 'calc(100vh - 70px)' }}>
-        {page === 'main' ? <App /> : page === 'ja' ? <SimpleAssessmentJa /> : <SimpleAssessment />}
+        {page === 'main' ? <App /> : page === 'ja' ? <AssessmentJa /> : <AssessmentEn />}
       </div>
     </div>
   );

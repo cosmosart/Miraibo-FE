@@ -2,9 +2,19 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { API_URL, QUESTIONS_API } from './apiConfig';
 
-// Define the Eiken question/request types
-const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3']
+const EIKEN_GRADES = ['1', 'Pre-1', '2', 'Pre-2-Plus', 'Pre-2', '3', '4', '5']
 const QUESTION_TYPES = ['Composition', 'Summary', 'Email']
+const STUDENT_GRADES = [
+  'General',
+  'Pre-Elementary',
+  'Lower Elementary',
+  'Upper Elementary',
+  'Middle School',
+  'High School',
+  'University',
+  'Post graduation',
+]
+
 const ASSISTANT_NAMES = [
   { value: 'thena', label: 'Thena', tip: 'Knowledgeable, strict veteran.' },
   { value: 'lumo', label: 'Lumo', tip: 'Fast and rigorous expert.' },
@@ -20,6 +30,14 @@ const ASSISTANT_TIPS: { [key: string]: string } = {
   pico: 'Lightweight and speedy newcomer.',
 };
 
+function getTeacherIdFromUrl() {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('teacher_id') || '';
+  }
+  return '';
+}
+
 function getReviewTypeFromUrl() {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -28,7 +46,7 @@ function getReviewTypeFromUrl() {
   return 'practice';
 }
 
-function App() {
+function AssessmentEn() {
   const [form, setForm] = useState({
     exam_grade: '',
     min_words: '',
@@ -37,8 +55,8 @@ function App() {
     question_type: '',
     underlined: '',
     student_name: '',
-    student_grade: '',
-    teacher_id: '',
+    student_grade: 'General',
+    teacher_id: getTeacherIdFromUrl(),
     student_answer: '',
     question_id: '',
     assistant_name: 'voxa',
@@ -47,15 +65,17 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<any>(null)
-  const [additionalInstructions, setAdditionalInstructions] = useState<string[]>([])
-  const [newInstruction, setNewInstruction] = useState('')
-  const [questions, setQuestions] = useState<{[id: string]: any}>({})
+  const [questionObj, setQuestionObj] = useState<any>(null)
   const [fetchingQuestions, setFetchingQuestions] = useState(false)
 
+  const filteredQuestionTypes = form.exam_grade === '1' || form.exam_grade === 'Pre-1'
+    ? QUESTION_TYPES.filter(qt => qt !== 'Email')
+    : QUESTION_TYPES
+
   useEffect(() => {
-    const fetchQuestions = async () => {
+    const fetchQuestion = async () => {
       if (!form.exam_grade || !form.question_type) {
-        setQuestions({})
+        setQuestionObj(null)
         return
       }
       setFetchingQuestions(true)
@@ -66,73 +86,78 @@ function App() {
           question_type: form.question_type.toLowerCase(),
         })
         const res = await fetch(`${QUESTIONS_API}?${params.toString()}`)
-        if (!res.ok) throw new Error('Failed to fetch questions')
+        if (!res.ok) throw new Error('Failed to fetch question')
         const data = await res.json()
         if (data && typeof data === 'object') {
-          setQuestions(data)
+          const keys = Object.keys(data)
+          if (keys.length > 0) {
+            const firstKey = keys[0]
+            const q = data[firstKey]
+            setQuestionObj(q)
+            setForm(prev => ({
+              ...prev,
+              question_id: firstKey || '',
+              min_words: q.min_words ? String(q.min_words) : '',
+              max_words: q.max_words ? String(q.max_words) : '',
+              question: q.question || '',
+            }))
+          } else {
+            setQuestionObj(null)
+          }
         } else {
-          setQuestions({})
+          setQuestionObj(null)
         }
       } catch (err: any) {
-        setError('Could not fetch question list: ' + err.message)
-        setQuestions({})
+        setError('Could not fetch question: ' + err.message)
+        setQuestionObj(null)
       } finally {
         setFetchingQuestions(false)
       }
     }
-    fetchQuestions()
+    fetchQuestion()
   }, [form.exam_grade, form.question_type])
 
-  // When a question is selected, auto-fill min_words, max_words, and question, and make them read-only
-  useEffect(() => {
-    if (form.question_id && questions[form.question_id]) {
-      const q = questions[form.question_id];
-      setForm(prev => ({
-        ...prev,
-        min_words: q.min_words ? String(q.min_words) : '',
-        max_words: q.max_words ? String(q.max_words) : '',
-        question: q.question || '',
-      }));
-    }
-    // Only clear if question_id is cleared
-    if (!form.question_id) {
-      setForm(prev => ({ ...prev, min_words: '', max_words: '', question: '' }));
-    }
-    // eslint-disable-next-line
-  }, [form.question_id])
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
-
-  const handleAddInstruction = () => {
-    if (newInstruction.trim()) {
-      setAdditionalInstructions([...additionalInstructions, newInstruction.trim()])
-      setNewInstruction('')
+    if (e.target.name === 'exam_grade' || e.target.name === 'question_type') {
+      setForm({
+        ...form,
+        [e.target.name]: e.target.value,
+        question_id: '',
+        min_words: '',
+        max_words: '',
+      })
+    } else {
+      setForm({ ...form, [e.target.name]: e.target.value })
     }
   }
-  const handleRemoveInstruction = (idx: number) => {
-    setAdditionalInstructions(additionalInstructions.filter((_, i) => i !== idx))
-  }
+
+  const getSelectedQuestionId = () => {
+    if (form.question_id) return form.question_id;
+    return '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setResult(null)
+    const selectedQuestionId = getSelectedQuestionId();
+    const selectedQuestion = selectedQuestionId && questionObj ? questionObj.question : form.question;
+    const minWords = selectedQuestionId && questionObj ? questionObj.min_words : form.min_words;
+    const maxWords = selectedQuestionId && questionObj ? questionObj.max_words : form.max_words;
     const payload = {
       eiken_data: {
-        additional_instructions: additionalInstructions.length > 0 ? additionalInstructions : undefined,
+        additional_instructions: undefined, // No additional instructions in simple mode
         exam_grade: form.exam_grade,
-        min_words: Number(form.min_words),
-        max_words: Number(form.max_words),
-        question: form.question,
+        min_words: Number(minWords),
+        max_words: Number(maxWords),
+        question: selectedQuestion,
         question_type: form.question_type.toLowerCase(),
-        underlined: form.underlined || undefined,
-        question_id: form.question_id || undefined,
+        underlined: form.underlined || '',
         assistant_name: form.assistant_name,
         review_type: form.review_type,
       },
+      question_id: selectedQuestionId || '',
       uuid: crypto.randomUUID(),
       student_name: form.student_name,
       student_grade: form.student_grade,
@@ -150,19 +175,32 @@ function App() {
       })
       if (!res.ok) {
         let errorText = await res.text();
-        console.error('Request payload:', payload);
-        console.error('Response status:', res.status);
-        console.error('Response text:', errorText);
         throw new Error(`Failed to get assessment (status: ${res.status})\n${errorText}`)
       }
       const data = await res.json()
       setResult(data)
     } catch (err: any) {
-      console.error(err);
       setError(err.message + (err.cause ? `\nCause: ${err.cause}` : ''))
     } finally {
       setLoading(false)
     }
+  }
+
+  const getUnderlined = () => {
+    if (form.underlined && form.underlined.trim() !== '') return form.underlined.trim();
+    if (questionObj && questionObj.underlined && String(questionObj.underlined).trim() !== '') return String(questionObj.underlined).trim();
+    return '';
+  };
+
+  if (!form.teacher_id) {
+    return (
+      <main id="root">
+        <h1>Eiken Assessment</h1>
+        <div style={{marginBottom: '1em', fontWeight: 500, color: '#b00'}}>
+          Please provide a teacher ID.
+        </div>
+      </main>
+    );
   }
 
   // Assistant selector separate from main form
@@ -185,8 +223,16 @@ function App() {
   return (
     <main id="root">
       <h1>Eiken Assessment</h1>
-      <form className="eiken-form" onSubmit={handleSubmit} aria-label="Eiken assessment form">
-        <AssistantSelector value={form.assistant_name} onChange={e => setForm({ ...form, assistant_name: e.target.value })} />
+      {form.teacher_id && (
+        <div style={{marginBottom: '1em', fontWeight: 500, color: '#333'}}>
+          Teacher ID: <span style={{fontFamily: 'monospace'}}>{form.teacher_id}</span>
+        </div>
+      )}
+      <div style={{marginBottom:8, color:'#777', fontSize:'0.97em'}}>
+        <b>Review Type:</b> {form.review_type}
+      </div>
+      <AssistantSelector value={form.assistant_name} onChange={e => setForm({ ...form, assistant_name: e.target.value })} />
+      <form className="eiken-form" onSubmit={handleSubmit} aria-label="Simple Eiken assessment form">
         <div className="form-row">
           <label>
             Exam Grade
@@ -199,52 +245,55 @@ function App() {
             Question Type
             <select name="question_type" value={form.question_type} onChange={handleChange} required>
               <option value="">Select type</option>
-              {QUESTION_TYPES.map(qt => <option key={qt} value={qt}>{qt}</option>)}
+              {filteredQuestionTypes.map(qt => <option key={qt} value={qt}>{qt}</option>)}
             </select>
           </label>
         </div>
         {fetchingQuestions ? (
           <div>Loading questions...</div>
-        ) : Object.keys(questions).length > 0 ? (
+        ) : form.exam_grade && form.question_type && !questionObj ? (
+          <div style={{marginTop: '1em', color: '#b00'}}>No question available for this grade and type.</div>
+        ) : questionObj ? (
           <>
-            <label>
-              Question ID
-              <select name="question_id" value={form.question_id} onChange={handleChange} required>
-                <option value="">Select question ID</option>
-                {Object.entries(questions).map(([qid, qobj]: [string, any]) => (
-                  <option key={qid} value={qid}>
-                    {qid} - {qobj.question.replace(/\s+/g, ' ').trim().slice(0, 60)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {/* Show the question text for the selected ID */}
-            {form.question_id && questions[form.question_id] && (
-              <div style={{marginTop: '1em', background: '#f6f8fa', padding: '1em', borderRadius: 8, color: '#222', textAlign: 'left'}}>
-                <b>Selected Question:</b>
-                <div style={{marginTop: '0.5em'}}>{questions[form.question_id].question}</div>
+            <div style={{marginTop: '1em', padding: '1em', color: '#222', textAlign: 'left'}}>
+              <b>Question ID:</b> {form.question_id}
+            </div>
+            <div style={{marginTop: '1em', background: '#f6f8fa', padding: '1em', borderRadius: 8, color: '#222', textAlign: 'left'}}>
+              <b>Selected Question:</b>
+              <div style={{marginTop: '0.5em'}}>
+                {form.question_type.toLowerCase() === 'composition' ? (
+                  <>
+                    <div>● Write an essay on the given TOPIC.</div>
+                    <div>● Give {getUnderlined() && `${getUnderlined()}`} reasons to support your answer.</div>
+                    <div>● Structure: introduction, main body, and conclusion</div>
+                    <div>● Suggested length: {form.min_words}-{form.max_words} words</div>
+                    <div style={{marginTop: '0.7em'}}>Any writing outside the space will not be graded.</div>
+                    <div style={{marginTop: '1em', fontWeight: 600}}>TOPIC</div>
+                    <div style={{marginTop: '0.5em'}}>{form.question}</div>
+                    {form.exam_grade !== '1' && form.exam_grade !== 'Pre-1' && Array.isArray(questionObj?.additional_instructions) && questionObj.additional_instructions.filter((pt: any) => typeof pt === 'string' && pt.trim().length > 0).length > 0 && (
+                      <div style={{marginTop: '1em'}}>
+                        <div style={{fontWeight: 600}}>Points</div>
+                        <ul style={{marginTop: '0.5em'}}>
+                          {questionObj.additional_instructions.filter((pt: any) => typeof pt === 'string' && pt.trim().length > 0).map((pt: string, idx: number) => (
+                            <li key={idx}>{pt.trim()}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                ) : form.question_type.toLowerCase() === 'summary' ? (
+                  <>
+                    <div>Read the article below and summarize it in your own words as far as possible in English.</div>
+                    <div>● Summarize it between {form.min_words} and {form.max_words} words.</div>
+                    <div style={{marginTop: '1em', fontWeight: 600}}>{form.question}</div>
+                  </>
+                ) : (
+                  <div style={{marginTop: '0.5em'}}>{form.question}</div>
+                )}
               </div>
-            )}
+            </div>
           </>
         ) : null}
-        <div className="form-row">
-          <label>
-            Min Words
-            <input name="min_words" type="number" min={1} value={form.min_words} onChange={handleChange} required readOnly={!!form.question_id} style={form.question_id ? {background:'#eee'} : {}} />
-          </label>
-          <label>
-            Max Words
-            <input name="max_words" type="number" min={1} value={form.max_words} onChange={handleChange} required readOnly={!!form.question_id} style={form.question_id ? {background:'#eee'} : {}} />
-          </label>
-        </div>
-        <label>
-          Question
-          <textarea name="question" value={form.question} onChange={handleChange} required rows={3} readOnly={!!form.question_id} style={form.question_id ? {background:'#eee'} : {}} />
-        </label>
-        <label>
-          Underlined (optional)
-          <input name="underlined" value={form.underlined} onChange={handleChange} />
-        </label>
         <div className="form-row">
           <label>
             Student Name
@@ -252,44 +301,16 @@ function App() {
           </label>
           <label>
             Student Grade
-            <input name="student_grade" value={form.student_grade} onChange={handleChange} required />
+            <select name="student_grade" value={form.student_grade || 'General'} onChange={handleChange} required>
+              {STUDENT_GRADES.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
           </label>
-        </div>
-        <label>
-          Teacher ID
-          <input name="teacher_id" value={form.teacher_id} onChange={handleChange} required />
-        </label>
-        {form.teacher_id && (
-          <div style={{marginBottom: '1em', fontWeight: 500, color: '#333'}}>
-            Teacher ID: <span style={{fontFamily: 'monospace'}}>{form.teacher_id}</span>
-          </div>
-        )}
-        <div style={{marginBottom:8, color:'#777', fontSize:'0.97em'}}>
-          <b>Review Type:</b> {form.review_type}
         </div>
         <label>
           Student Answer
           <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={5} />
-        </label>
-        <label>
-          Additional Instructions (optional)
-          <div style={{display:'flex', gap:'0.5em', alignItems:'center', marginBottom:'0.5em'}}>
-            <input
-              type="text"
-              value={newInstruction}
-              onChange={e => setNewInstruction(e.target.value)}
-              placeholder="Add instruction"
-            />
-            <button type="button" onClick={handleAddInstruction} disabled={!newInstruction.trim()}>Add</button>
-          </div>
-          <ul style={{margin:0, paddingLeft:'1.2em'}}>
-            {additionalInstructions.map((inst, idx) => (
-              <li key={idx} style={{display:'flex', alignItems:'center', gap:'0.5em'}}>
-                <span>{inst}</span>
-                <button type="button" aria-label="Remove instruction" onClick={() => handleRemoveInstruction(idx)} style={{fontSize:'0.9em', color:'#b00020', background:'none', border:'none', cursor:'pointer'}}>✕</button>
-              </li>
-            ))}
-          </ul>
         </label>
         <button type="submit" disabled={loading}>{loading ? 'Submitting...' : 'Submit'}</button>
       </form>
@@ -301,7 +322,7 @@ function App() {
             <p><b>Student:</b> {result.student_name} ({result.student_grade})</p>
             <p><b>Teacher ID:</b> {result.teacher_id}</p>
             <p><b>Exam Type:</b> {result.exam_type} ({result.exam_grade})</p>
-            <p><b>Assignment ID:</b> {result.assignment_id} ({result.assignment_grade})</p>
+            <p><b>Assignment ID:</b><br/> {result.result_id}</p>
             <hr />
             {result.the_result && typeof result.the_result === 'object' ? (
               <>
@@ -321,17 +342,10 @@ function App() {
                   <li>Vocabulary: {result.the_result.vocabulary_score}</li>
                   <li>Grammar: {result.the_result.grammar_score}</li>
                 </ul>
-                {result.the_result.gemini_internal_summary && <details><summary>Gemini Internal Summary</summary><pre>{result.the_result.gemini_internal_summary}</pre></details>}
               </>
             ) : (
               <pre>{JSON.stringify(result.the_result, null, 2)}</pre>
             )}
-            {/* Always print the full raw result for debugging */}
-            <hr />
-            <details open>
-              <summary>Raw API Response</summary>
-              <pre>{JSON.stringify(result, null, 2)}</pre>
-            </details>
           </div>
         </section>
       )}
@@ -339,4 +353,4 @@ function App() {
   )
 }
 
-export default App
+export default AssessmentEn
