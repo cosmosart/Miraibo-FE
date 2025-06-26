@@ -31,7 +31,7 @@ const EIKEN_GRADES_API_MAP: { [key: string]: string } = {
 }
 const QUESTION_TYPES = ['作文', '要約', 'Eメール']
 const STUDENT_GRADES = [
-  '一般',
+  '一般人',
   '小学校低学年',
   '小学校高学年',
   '中学生',
@@ -225,6 +225,36 @@ function AssessmentJa() {
     );
   }
 
+  // English template for grade 1 and Pre-1
+  const EN_QUESTION_TEMPLATE = (
+    <>
+      <b>{form.question_type === '作文' ? 'English Composition' : form.question_type === '要約' ? 'English Summary' : 'Selected Question'}</b>
+      <div style={{marginTop: '0.5em'}}>
+        {form.question_type === '作文' ? (
+          <>
+            <div>● Write an essay on the given TOPIC.</div>
+            <div>
+              ● Give {getUnderlined() ? getUnderlined() : 'THREE'} reasons to support your answer.
+            </div>
+            <div>● Structure: introduction, main body, and conclusion</div>
+            <div>● Suggested length: {form.min_words}-{form.max_words} words</div>
+            <div style={{marginTop: '0.7em'}}>Any writing outside the space will not be graded.</div>
+            <div style={{marginTop: '1em', fontWeight: 600}}>TOPIC</div>
+            <div style={{marginTop: '0.5em'}}>{form.question}</div>
+          </>
+        ) : form.question_type === '要約' ? (
+          <>
+            <div>Read the article below and summarize it in your own words as far as possible in English.</div>
+            <div>● Summarize it between {form.min_words} and {form.max_words} words.</div>
+            <div style={{marginTop: '1em', fontWeight: 600}}>{form.question}</div>
+          </>
+        ) : (
+          <div style={{marginTop: '0.5em'}}>{form.question}</div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <main id="root">
       <h1>英検アセスメント</h1>
@@ -262,53 +292,59 @@ function AssessmentJa() {
               <b>問題ID:</b> {form.question_id}
             </div>
             <div style={{marginTop: '1em', background: '#f6f8fa', padding: '1em', borderRadius: 8, color: '#222', textAlign: 'left'}}>
-              <b>出題内容:</b>
-              <div style={{marginTop: '0.5em'}}>
-                {form.question_type === '作文' ? (
-                  <>
-                    <div>● 以下の TOPIC について，あなたの意見とその理由を{getUnderlined()}つ書きなさい。</div>
-                    {form.exam_grade !== '1級' && form.exam_grade !== '準1級' && (
-                      <div>● POINTS は理由を書く際の参考となる観点を示したものです。ただし，これら以外の観点から理由を書いてもかまいません。</div>
+              {(form.exam_grade === '1級' || form.exam_grade === '準1級') ? (
+                EN_QUESTION_TEMPLATE
+              ) : (
+                <>
+                  <b>出題内容:</b>
+                  <div style={{marginTop: '0.5em'}}>
+                    {form.question_type === '作文' ? (
+                      <>
+                        <div>● 以下の TOPIC について，あなたの意見とその理由を{getUnderlined()}つ書きなさい。</div>
+                        {form.exam_grade !== '1級' && form.exam_grade !== '準1級' && (
+                          <div>● POINTS は理由を書く際の参考となる観点を示したものです。ただし，これら以外の観点から理由を書いてもかまいません。</div>
+                        )}
+                        <div>● 語数の目安は {form.min_words}語-{form.max_words}語です。</div>
+                        <div>● 構成: 導入・本文・結論</div>
+                        <div style={{marginTop: '0.7em'}}>枠外の記述は採点されません。</div>
+                        <div style={{marginTop: '1em', fontWeight: 600}}>トピック</div>
+                        <div style={{marginTop: '0.5em'}}>{form.question}</div>
+                        {/* ポイント欄: 1級・準1級以外でadditional_instructionsがあれば表示 */}
+                        {form.exam_grade !== '1級' && form.exam_grade !== '準1級' && (
+                          Array.isArray(questionObj?.additional_instructions) && questionObj.additional_instructions.filter((pt: any) => typeof pt === 'string' && pt.trim().length > 0).length > 0 && (
+                            <>
+                              <div style={{fontWeight: 600, marginTop: '0.5em'}}>ポイント</div>
+                              <ul style={{marginTop: '0.5em'}}>
+                                {questionObj.additional_instructions.filter((pt: any) => typeof pt === 'string' && pt.trim().length > 0).map((pt: string, idx: number) => (
+                                  <li key={idx}>{pt.trim()}</li>
+                                ))}
+                              </ul>
+                            </>
+                          )
+                        )}
+                      </>
+                    ) : form.question_type === '要約' ? (
+                      <>
+                        <div>下記の文章を読み、できるだけ自分の言葉で要約してください。</div>
+                        <div>● {form.min_words}～{form.max_words}語でまとめてください。</div>
+                        <div style={{marginTop: '1em', fontWeight: 600}}>{form.question}</div>
+                      </>
+                    ) : (
+                      <div style={{marginTop: '0.5em'}}>{form.question}</div>
                     )}
-                    <div>● 語数の目安は {form.min_words}語-{form.max_words}語です。</div>
-                    <div>● 構成: 導入・本文・結論</div>
-                    <div style={{marginTop: '0.7em'}}>枠外の記述は採点されません。</div>
-                    <div style={{marginTop: '1em', fontWeight: 600}}>トピック</div>
-                    <div style={{marginTop: '0.5em'}}>{form.question}</div>
-                    {/* ポイント欄: 1級・準1級以外でadditional_instructionsがあれば表示 */}
-                    {form.exam_grade !== '1級' && form.exam_grade !== '準1級' && (
-                      Array.isArray(questionObj?.additional_instructions) && questionObj.additional_instructions.filter((pt: any) => typeof pt === 'string' && pt.trim().length > 0).length > 0 && (
-                        <>
-                          <div style={{fontWeight: 600, marginTop: '0.5em'}}>ポイント</div>
-                          <ul style={{marginTop: '0.5em'}}>
-                            {questionObj.additional_instructions.filter((pt: any) => typeof pt === 'string' && pt.trim().length > 0).map((pt: string, idx: number) => (
-                              <li key={idx}>{pt.trim()}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )
-                    )}
-                  </>
-                ) : form.question_type === '要約' ? (
-                  <>
-                    <div>下記の文章を読み、できるだけ自分の言葉で要約してください。</div>
-                    <div>● {form.min_words}～{form.max_words}語でまとめてください。</div>
-                    <div style={{marginTop: '1em', fontWeight: 600}}>{form.question}</div>
-                  </>
-                ) : (
-                  <div style={{marginTop: '0.5em'}}>{form.question}</div>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </>
         ) : null}
         <div className="form-row">
           <label>
-            生徒氏名
+            Name
             <input name="student_name" value={form.student_name} onChange={handleChange} required />
           </label>
           <label>
-            生徒学年
+            学年
             <select name="student_grade" value={form.student_grade} onChange={handleChange} required>
               {STUDENT_GRADES.map(g => (
                 <option key={g} value={g}>{g}</option>
@@ -317,8 +353,8 @@ function AssessmentJa() {
           </label>
         </div>
         <label>
-          生徒解答
-          <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={5} />
+          解答
+          <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={7} />
         </label>
         <button type="submit" disabled={loading}>{loading ? '送信中...' : '送信'}</button>
       </form>
@@ -329,24 +365,27 @@ function AssessmentJa() {
           <div style={{textAlign:'left'}}>
             <p><b>生徒:</b> {result.student_name} ({result.student_grade})</p>
             <p><b>教員ID:</b> {result.teacher_id}</p>
-            <p><b>試験タイプ:</b> {result.exam_type} ({result.exam_grade})</p>
+            <p><b>試験グレード:</b> {result.exam_grade}</p>
+            <p><b>レビュータイプ:</b> {result.review_type}</p>
             <p><b>課題ID:</b><br/> {result.result_id}</p>
             <hr />
             {result.the_result && typeof result.the_result === 'object' ? (
               <>
                 <p><b>総合フィードバック:</b> {result.the_result.overall_feedback}</p>
                 <p><b>良い点:</b> <ul>{result.the_result.strengths?.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
-                <p><b>改善点:</b> <ul>{result.the_result.weaknesses?.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul></p>
-                <p><b>改善提案:</b> <ul>{result.the_result.improvement_suggestions?.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
-                {result.the_result.example_answers && <p><b>模範解答:</b> {result.the_result.example_answers}</p>}
-                <p><b>改善プラン:</b> {result.the_result.improvement_plan}</p>
+                {result.the_result.weaknesses && result.the_result.weaknesses.length > 0 && (
+                  <p><b>改善点:</b> <ul>{result.the_result.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul></p>
+                )}
+                {result.the_result.improvement_suggestions && result.the_result.improvement_suggestions.length > 0 && (
+                  <p><b>改善提案:</b> <ul>{result.the_result.improvement_suggestions.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul></p>
+                )}
+                {result.the_result.exemplar_answer && (
+                  <p><b>模範解答:</b> {result.the_result.exemplar_answer}</p>
+                )}
                 <p><b>スコア:</b></p>
                 <ul>
-                  <li>理由: {result.the_result.reasons_score}</li>
-                  <li>構成: {result.the_result.structure_score}</li>
-                  <li>語数: {result.the_result.length_score}</li>
                   <li>内容: {result.the_result.content_score}</li>
-                  <li>一貫性: {result.the_result.cohesion_score}</li>
+                  <li>構成: {result.the_result.structure_score}</li>
                   <li>語彙: {result.the_result.vocabulary_score}</li>
                   <li>文法: {result.the_result.grammar_score}</li>
                 </ul>
