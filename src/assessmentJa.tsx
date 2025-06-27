@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import { API_URL, QUESTIONS_API } from './apiConfig';
+import { API_URL, CONVERT_API, QUESTIONS_API } from './apiConfig';
 
 function getTeacherIdFromUrl() {
   if (typeof window !== 'undefined') {
@@ -75,6 +75,8 @@ function AssessmentJa() {
   const [result, setResult] = useState<any>(null)
   const [questionObj, setQuestionObj] = useState<any>(null)
   const [fetchingQuestions, setFetchingQuestions] = useState(false)
+  const [useHandwriting, setUseHandwriting] = useState(false)
+  const [convertingHandwriting, setConvertingHandwriting] = useState(false)
 
   const apiQuestionType = (type: string) => {
     if (type === '作文') return 'composition';
@@ -141,11 +143,61 @@ function AssessmentJa() {
     return '';
   };
 
+  const handleHandwritingChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setConvertingHandwriting(true);
+      setError(null);
+      try {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const base64 = (reader.result as string).split(',')[1];
+            const res = await fetch(CONVERT_API, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image_file: base64 }),
+            });
+            if (!res.ok) throw new Error('手書きファイルの変換に失敗しました');
+            const data = await res.json();
+            let answer = '';
+            if (typeof data === 'string') {
+              answer = data;
+            } else if (data && data.text) {
+              answer = data.text;
+            } else {
+              throw new Error('手書きファイルの変換結果が不正です');
+            }
+            setForm(prev => ({ ...prev, student_answer: answer }));
+          } catch (err: any) {
+            setError('手書きファイルの変換に失敗しました: ' + err.message);
+            setForm(prev => ({ ...prev, student_answer: '' }));
+          } finally {
+            setConvertingHandwriting(false);
+          }
+        };
+        reader.onerror = () => {
+          setError('ファイルの読み込みに失敗しました');
+          setConvertingHandwriting(false);
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        setError('手書きファイルの変換に失敗しました: ' + err.message);
+        setForm(prev => ({ ...prev, student_answer: '' }));
+        setConvertingHandwriting(false);
+      }
+    } else {
+      setForm(prev => ({ ...prev, student_answer: '' }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setResult(null)
+    // No need to convert handwriting here, already handled on file upload
+    let studentAnswer = form.student_answer;
     const selectedQuestionId = getSelectedQuestionId();
     const selectedQuestion = selectedQuestionId && questionObj ? questionObj.question : form.question;
     const minWords = selectedQuestionId && questionObj ? questionObj.min_words : form.min_words;
@@ -167,7 +219,7 @@ function AssessmentJa() {
       student_name: form.student_name,
       student_grade: form.student_grade,
       teacher_id: form.teacher_id,
-      student_answer: form.student_answer,
+      student_answer: studentAnswer,
     }
     try {
       const res = await fetch(API_URL, {
@@ -265,7 +317,8 @@ function AssessmentJa() {
         <b>Review type:</b> {form.review_type}
       </div>
       <AssistantSelector value={form.assistant_name} onChange={e => setForm({ ...form, assistant_name: e.target.value })} />
-      <form className="eiken-form" onSubmit={handleSubmit} aria-label="英検アセスメントフォーム">
+      {/* First form: all fields except student_answer and handwriting */}
+      <form className="eiken-form" onSubmit={e => e.preventDefault()} aria-label="英検アセスメントフォーム-1">
         <div className="form-row">
           <label>
             グレード
@@ -352,10 +405,34 @@ function AssessmentJa() {
             </select>
           </label>
         </div>
-        <label>
-          解答
-          <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required rows={7} />
-        </label>
+      </form>
+      {/* Handwriting controls moved under the first form */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 8, justifyContent: 'flex-start' }}>
+        <input
+          type="checkbox"
+          id="useHandwriting"
+          checked={useHandwriting}
+          onChange={e => { setUseHandwriting(e.target.checked); if (!e.target.checked) { setForm(prev => ({ ...prev, student_answer: '' })); } }}
+          style={{ margin: 0, alignSelf: 'flex-start' }}
+        />
+        <label htmlFor="useHandwriting" style={{ margin: 0, fontWeight: 400, whiteSpace: 'nowrap', alignSelf: 'flex-start' }}>手書きファイル付け</label>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/jpg"
+          disabled={!useHandwriting}
+          onChange={handleHandwritingChange}
+          style={{ margin: 0, padding: 0, width: 'auto', minWidth: 0, alignSelf: 'flex-start' }}
+        />
+        {convertingHandwriting && <span style={{ color: '#888', marginLeft: 6, fontSize: '0.95em', alignSelf: 'flex-start' }}>変換中...</span>}
+      </div>
+      {/* Second form: student_answer and handwriting */}
+      <form className="eiken-form" onSubmit={handleSubmit} aria-label="英検アセスメントフォーム-2">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+          <label style={{ flex: 1 }}>
+            解答
+            <textarea name="student_answer" value={form.student_answer} onChange={handleChange} required={!useHandwriting} disabled={useHandwriting} rows={7} />
+          </label>
+        </div>
         <button type="submit" disabled={loading}>{loading ? '送信中...' : '送信'}</button>
       </form>
       {error && <div className="error" role="alert">{error}</div>}
