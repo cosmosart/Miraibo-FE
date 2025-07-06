@@ -31,7 +31,7 @@ const EIKEN_GRADES_API_MAP: { [key: string]: string } = {
 }
 const QUESTION_TYPES = ['作文', '要約', 'Eメール']
 const STUDENT_GRADES = [
-  '一般人',
+  '一般',
   '小学校低学年',
   '小学校高学年',
   '中学生',
@@ -307,6 +307,30 @@ function AssessmentJa() {
     </>
   );
 
+  function formatEmailContentWithUnderline(text: string, underline: string) {
+    if (!text) return '';
+    let formatted = text
+      .replace(/(Hi,|Dear [^\n,]+,)/g, '$1\n')
+      .replace(/(Best regards,|Your friend,|Sincerely,|Regards,)/g, '$1\n')
+      .replace(/(\n\s*)+/g, '\n');
+    formatted = formatted.replace(/(\n)([A-Z][a-z]+)$/gm, '\n$2');
+    if (underline && underline.trim().length > 0) {
+      // Split underline by newlines, punctuation, and also by spaces for multi-line/multi-phrase
+      let underlineParts = underline.split(/\n|。|\.|!|\?|\s{2,}/).map(s => s.trim()).filter(Boolean);
+      if (underlineParts.length === 0) underlineParts = [underline.trim()];
+      underlineParts.forEach(part => {
+        if (part.length === 0) return;
+        // Match across newlines and whitespace, so use a regex with 's' flag
+        const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match the part even if it is split by a line break in the text
+        const underlineRegex = new RegExp(escaped.replace(/\s+/g, '\\s+'), 'gs');
+        formatted = formatted.replace(underlineRegex, match => `<span style="text-decoration:underline;font-weight:500">${match}</span>`);
+      });
+    }
+    // Return as JSX
+    return <span dangerouslySetInnerHTML={{__html: formatted}} />;
+  }
+
   return (
     <main id="root">
       <h1>英検アセスメント</h1>
@@ -382,6 +406,11 @@ function AssessmentJa() {
                         <div>● {form.min_words}～{form.max_words}語でまとめてください。</div>
                         <div style={{marginTop: '1em', fontWeight: 600}}>{form.question}</div>
                       </>
+                    ) : form.question_type === 'Eメール' ? (
+                      // Email formatting: break after greeting, after closing, and before signature
+                      <div style={{whiteSpace: 'pre-line'}}>
+                        {formatEmailContentWithUnderline(form.question, getUnderlined())}
+                      </div>
                     ) : (
                       <div style={{marginTop: '0.5em'}}>{form.question}</div>
                     )}
