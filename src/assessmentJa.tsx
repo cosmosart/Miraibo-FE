@@ -365,9 +365,6 @@ function AssessmentJa() {
           <div style={{marginTop: '1em', color: '#b00'}}>このグレードとタイプの問題がありません。</div>
         ) : questionObj ? (
           <>
-            <div style={{marginTop: '1em', padding: '1em', color: '#222', textAlign: 'left'}}>
-              <b>問題ID:</b> {form.question_id}
-            </div>
             <div style={{marginTop: '1em', background: '#f6f8fa', padding: '1em', borderRadius: 8, color: '#222', textAlign: 'left'}}>
               {(form.exam_grade === '1級' || form.exam_grade === '準1級') ? (
                 EN_QUESTION_TEMPLATE
