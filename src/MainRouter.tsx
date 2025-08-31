@@ -2,10 +2,11 @@ import { useState } from 'react';
 import App from './App';
 import AssessmentEn from './assessmentEn';
 import AssessmentJa from './assessmentJa';
+import IntensiveTestJa from './intensiveTestJa';
 import './App.css';
 
 function MainRouter() {
-  const [page, setPage] = useState<'main' | 'simple' | 'ja'>('ja');
+  const [page, setPage] = useState<'main' | 'simple' | 'ja' | 'intensive'>('ja');
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -18,6 +19,14 @@ function MainRouter() {
               onClick={() => setPage('ja')}
             >
               英検
+            </button>
+          </li>
+          <li>
+            <button
+              style={{ padding: '0.7em 1.5em', background: page === 'intensive' ? '#1976d2' : '#fff', color: page === 'intensive' ? '#fff' : '#222', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}
+              onClick={() => setPage('intensive')}
+            >
+              集中テスト
             </button>
           </li>
           <li>
@@ -39,7 +48,7 @@ function MainRouter() {
         </ul>
       </nav>
       <div style={{ padding: '2em 1em', background: '#fafcff', minHeight: 'calc(100vh - 70px)' }}>
-        {page === 'main' ? <App /> : page === 'ja' ? <AssessmentJa /> : <AssessmentEn />}
+        {page === 'main' ? <App /> : page === 'ja' ? <AssessmentJa /> : page === 'intensive' ? <IntensiveTestJa /> : <AssessmentEn />}
       </div>
     </div>
   );
